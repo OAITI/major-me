@@ -17,7 +17,14 @@ qs_dev <- qs_algo %>%
     })
 
 # Initialize
-cur_qs <- colnames(qs_algo)[sample(2:ncol(qs_algo), size = 1)]
+# first question is the one with max deviation(most distinguishable)
+cur_qs <- qs_dev %>%
+    select(-Major) %>%
+    select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
+    filter_all(any_vars(. == !!max(.))) %>%
+    select(max.col(.)) %>%
+    select(1) %>%
+    colnames()
 dist_calc <- qs_algo %>% select(Major) %>% mutate(Distance = 0)
 rank1 <- tibble()
 
