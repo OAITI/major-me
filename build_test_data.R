@@ -7,7 +7,10 @@ algo <- read_csv("data/input_data/algonquin_orig.csv") # specific occupation to 
 qs <- read_csv("data/input_data/questions.csv") %>%
     filter(!is.na(Question)) # qs to Traits
 means <- read_excel("data/input_data/InitialMeanVectors.xlsx") %>%
-    filter(!is.na(`...1`))# Broad Major to Traits(mean vectors)
+    filter(!is.na(`...1`)) %>% # Broad Major to Traits(mean vectors)
+    mutate_if(is.numeric, function(x){
+        x-3
+    })
 mapping <- read_csv("data/input_data/major_mapping.csv") # specific occupation to broad major
 
 # answers to 1-5 level in tall format
@@ -16,7 +19,7 @@ algo_tall <- algo %>%
     gather(key = Question, value = Answer, 2:ncol(.)) %>%
     mutate(Answer = factor(Answer, levels = c("Strongly Disagree", "Disagree", "Sometimes", "Agree", "Strongly Agree"))) %>%
     filter(!is.na(Answer)) %>%
-    mutate(AnswerNum = as.numeric(Answer))
+    mutate(AnswerNum = as.numeric(Answer) -3)
 length(unique(qs$Question))
 length(unique(algo_tall$Question)) # only has a sample of qs and occupations
 
