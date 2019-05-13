@@ -36,7 +36,9 @@ dev_data <- qs_data %>%
     })
 trait_data <- read_csv("data/input_data/questions.csv") %>%
     filter(!is.na(Question)) %>%
-    gather(key = Construct, value, 2:ncol(.), na.rm = TRUE)
+    gather(key = Construct, value, 2:ncol(.), na.rm = TRUE) %>%
+    # replace 1 with trait name and -1 with not
+    mutate(Trait = ifelse(value == 1, Construct, paste0("Not ", Construct)))
 # for mds plot
 major_avg <- colMeans(qs_data[,-1])
 qs_useralgo <- qs_data %>%
@@ -49,18 +51,16 @@ server <- function(input, output, session) {
     user <- reactiveValues(user = NULL, if_finish_quiz = FALSE, 
                            user_response = numeric(), pred_label = NULL)
     ## Reactive Values for Input
-    data <- reactiveValues(qs = NULL, qs_dev = NULL, trait = NULL)
+    data <- reactiveValues(qs = NULL, qs_dev = NULL)
     ## Reactive Values to track for next steps/convergence
-    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL, user_algo = NULL, prev_qs = NULL)
+    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL,
+                            iter = numeric(), rank1 = NULL, user_algo = NULL, prev_qs = NULL)
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
         data$qs <- qs_data
         # find deviations from mean of observations for each question
         data$qs_dev <- dev_data
-        data$trait <- trait_data %>%
-            # replace 1 with trait name and -1 with not
-            mutate(Trait = ifelse(value == 1, Construct, paste0("Not ", Construct)))
         # Initialize/Set all vars to default
         user$user <- tempfile(pattern = "User", tmpdir = "")
         user$if_finish_quiz <- FALSE
@@ -77,6 +77,7 @@ server <- function(input, output, session) {
         track$rank1 <- tibble()
         track$iter <- 0
         track$selected_qs <- NULL
+        track$prev_qs <- NULL
         track$user_algo <- qs_useralgo
     })
     
@@ -160,7 +161,7 @@ server <- function(input, output, session) {
     })
     qs_trait <- reactive({
         if(!is.null(user$user) & !user$if_finish_quiz) {
-            data$trait %>%
+            trait_data %>%
                 filter(Question == track$cur_qs) %>%
                 select(Construct)
         }})
