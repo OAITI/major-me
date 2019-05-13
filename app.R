@@ -79,6 +79,15 @@ server <- function(input, output, session) {
                                          "Disagree" = -1,"Strongly Disagree" = -2)),
                 actionButton("ansButton", label = "Submit")
             )
+        } else if (user$if_finish_quiz) {
+                list(
+                    HTML(paste0("<h3>", "Your Major is <b>", user$pred_label, "</b></h3>"))
+                )
+            }
+        else {
+            list(
+                h4(paste0("Ready.."))
+            )
         }
     })
     
@@ -142,7 +151,13 @@ server <- function(input, output, session) {
     })
     output$mdsplot <- renderPlot({
         if(!is.null(user$user)) {
-            d <- dist(data$qs[,-1])
+            # plot min distance majors only
+            majors <- data$qs 
+            if(!is.null(track$rank1)) {
+                majors <- data$qs %>%
+                filter(Major %in% track$rank1$Major)
+            }
+            d <- dist(majors[,-1])
             # d <- dist(read_excel("data/input_data/InitialMeanVectors.xlsx") %>%
             #               filter(!is.na(`...1`)) %>%
             #               rename(Major = `...1`))
@@ -152,7 +167,7 @@ server <- function(input, output, session) {
             # plot solution 
             x <- fit$points[,1]
             y <- fit$points[,2]
-            plotdata <- data.frame(data$qs[,1], x,y)
+            plotdata <- data.frame(majors[,1], x,y)
             ggplot(plotdata, aes(x, y)) +
                 geom_point(color = '#F78E24') +
                 geom_text_repel(aes(label = Major)) +
