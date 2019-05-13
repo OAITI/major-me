@@ -36,7 +36,7 @@ server <- function(input, output, session) {
     user <- reactiveValues(user = NULL, if_finish_quiz = FALSE, 
                            user_response = numeric(), pred_label = NULL)
     ## Reactive Values for Input
-    data <- reactiveValues(qs = NULL, qs_dev = NULL)
+    data <- reactiveValues(qs = NULL, qs_dev = NULL, trait = NULL)
     ## Reactive Values to track for next steps/convergence
     track <- reactiveValues(cur_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL)
     
@@ -49,6 +49,11 @@ server <- function(input, output, session) {
             mutate_if(is.numeric, function(x) {
                 abs(x - mean(x, na.rm = TRUE))
             })
+        data$trait <- read_csv("data/input_data/questions.csv") %>%
+            filter(!is.na(Question)) %>%
+            gather(key = Construct, value, 2:ncol(.), na.rm = TRUE) %>%
+            # replace 1 with trait name and -1 with not
+            mutate(Trait = ifelse(value == 1, Construct, paste0("Not ", Construct)))
         # Initialize/Set all vars to default
         user$user <- tempfile(pattern = "User", tmpdir = "")
         user$if_finish_quiz <- FALSE
@@ -136,15 +141,24 @@ server <- function(input, output, session) {
             select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
             filter_all(any_vars(. == !!max(.))) %>%
             select(max.col(.))
+        
         # choose 1 in case there are many, this becomes cur_qs
         track$cur_qs <- max_dist_qs %>%
             select(1) %>%
             colnames()
         track$iter <- track$iter + 1
     })
-    
+    qs_trait <- reactive({
+        if(!is.null(user$user) & !user$if_finish_quiz) {
+            data$trait %>%
+                filter(Question == track$cur_qs) %>%
+                select(Construct)
+        }
+        
+        })
     output$stat_ui <- renderUI({
         list(
+            h4("Trait Measured by this Question: ", qs_trait()),
             h4("Possible Majors"),
             withSpinner(plotOutput("mdsplot"))
         )
