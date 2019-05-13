@@ -51,7 +51,7 @@ server <- function(input, output, session) {
     ## Reactive Values for Input
     data <- reactiveValues(qs = NULL, qs_dev = NULL, trait = NULL)
     ## Reactive Values to track for next steps/convergence
-    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL)
+    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL, user_algo = qs_useralgo, prev_qs = NULL)
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
@@ -107,6 +107,7 @@ server <- function(input, output, session) {
     # Submit answer - find minmajors, update tracking vars, data vars, user vars, and mdsplot 
     observeEvent(input$ansButton,{
         user$user_response <- as.numeric(input$ans_choice)
+        track$prev_qs <- track$cur_qs
         # Algo steps to update vars
         track$dist_calc <- track$dist_calc %>%
             mutate(Distance = Distance + abs(data$qs[[track$cur_qs]] - user$user_response)) 
@@ -171,18 +172,17 @@ server <- function(input, output, session) {
         )
     })
     plotdata <- reactive({
-        d <- dist(qs_useralgo[,-1])
+        d <- dist(track$user_algo[,-1])
         if(!is.null(track$selected_qs)){
             # if the user has answered qs, update the answer
-            qs_useralgo[qs_useralgo$Major == "My Major", track$cur_qs] <- user$user_response
+            track$user_algo[track$user_algo$Major == "My Major", track$prev_qs] <- user$user_response
             # take distance between selected qs vectors and mymajor for mds
-            d <- dist(qs_useralgo[,track$selected_qs, drop = FALSE])
+            d <- dist(track$user_algo[,track$selected_qs, drop = FALSE])
         }
-        
         fit <- cmdscale(d, eig=TRUE, k=2)
         
         # plot data 
-        data.frame(qs_useralgo[,1], x = fit$points[,1], y = fit$points[,2])
+        data.frame(track$user_algo[,1], x = fit$points[,1], y = fit$points[,2])
     })
     output$mdsplot <- renderPlot({
         if(!is.null(user$user)) {
