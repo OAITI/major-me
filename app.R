@@ -51,7 +51,7 @@ server <- function(input, output, session) {
     ## Reactive Values for Input
     data <- reactiveValues(qs = NULL, qs_dev = NULL, trait = NULL)
     ## Reactive Values to track for next steps/convergence
-    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL, user_algo = qs_useralgo, prev_qs = NULL)
+    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL, user_algo = NULL, prev_qs = NULL)
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
@@ -77,6 +77,7 @@ server <- function(input, output, session) {
         track$rank1 <- tibble()
         track$iter <- 0
         track$selected_qs <- NULL
+        track$user_algo <- qs_useralgo
     })
     
     output$quiz_ui <- renderUI({
