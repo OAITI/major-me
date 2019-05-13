@@ -37,6 +37,10 @@ dev_data <- qs_data %>%
 trait_data <- read_csv("data/input_data/questions.csv") %>%
     filter(!is.na(Question)) %>%
     gather(key = Construct, value, 2:ncol(.), na.rm = TRUE)
+# for mds plot
+major_avg <- colMeans(qs_data[,-1])
+qs_useralgo <- qs_data %>%
+    rbind(c("My Major", major_avg)) # in the beginning user answrs are set to average of all majors
 
 # Define server logic required 
 server <- function(input, output, session) {
@@ -47,7 +51,7 @@ server <- function(input, output, session) {
     ## Reactive Values for Input
     data <- reactiveValues(qs = NULL, qs_dev = NULL, trait = NULL)
     ## Reactive Values to track for next steps/convergence
-    track <- reactiveValues(cur_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL)
+    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL, iter = numeric(), rank1 = NULL)
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
@@ -72,6 +76,7 @@ server <- function(input, output, session) {
         track$dist_calc <- data$qs %>% select(Major) %>% mutate(Distance = 0)
         track$rank1 <- tibble()
         track$iter <- 0
+        track$selected_qs <- NULL
     })
     
     output$quiz_ui <- renderUI({
@@ -132,7 +137,6 @@ server <- function(input, output, session) {
                 count(Major, sort = TRUE) %>%
                 slice(1) 
             if (check$n > 4) {
-               # print(paste0("Your major is: ", check$Major))
                 user$pred_label <- check$Major
                 user$if_finish_quiz <- TRUE
             } 
@@ -144,7 +148,8 @@ server <- function(input, output, session) {
             select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
             filter_all(any_vars(. == !!max(.))) %>%
             select(max.col(.))
-        
+        # add cur qs to selected
+        track$selected_qs <- c(track$selected_qs, track$cur_qs)
         # choose 1 in case there are many, this becomes cur_qs
         track$cur_qs <- max_dist_qs %>%
             select(1) %>%
@@ -156,43 +161,38 @@ server <- function(input, output, session) {
             data$trait %>%
                 filter(Question == track$cur_qs) %>%
                 select(Construct)
-        }
-        
-        })
+        }})
     output$stat_ui <- renderUI({
         list(
-            h4("Trait Measured by this Question: ", qs_trait()),
-            h4("Possible Majors"),
+            h4("Trait Measured by current Question: ", qs_trait()),
+            hr(),
+            h4("Map of Possible Majors (based on previous answer)"),
             withSpinner(plotOutput("mdsplot"))
         )
     })
+    plotdata <- reactive({
+        d <- dist(qs_useralgo[,-1])
+        if(!is.null(track$selected_qs)){
+            # if the user has answered qs, update the answer
+            qs_useralgo[qs_useralgo$Major == "My Major", track$cur_qs] <- user$user_response
+            # take distance between selected qs vectors and mymajor for mds
+            d <- dist(qs_useralgo[,track$selected_qs, drop = FALSE])
+        }
+        
+        fit <- cmdscale(d, eig=TRUE, k=2)
+        
+        # plot data 
+        data.frame(qs_useralgo[,1], x = fit$points[,1], y = fit$points[,2])
+    })
     output$mdsplot <- renderPlot({
         if(!is.null(user$user)) {
-            # plot min distance majors only
-            majors <- data$qs 
-            if(!is.null(track$rank1)) {
-                majors <- data$qs %>%
-                filter(Major %in% track$rank1$Major)
-            }
-            d <- dist(majors[,-1])
-            # d <- dist(read_excel("data/input_data/InitialMeanVectors.xlsx") %>%
-            #               filter(!is.na(`...1`)) %>%
-            #               rename(Major = `...1`))
-            
-            fit <- cmdscale(d, eig=TRUE, k=2)
-            
-            # plot solution 
-            x <- fit$points[,1]
-            y <- fit$points[,2]
-            plotdata <- data.frame(majors[,1], x,y)
-            ggplot(plotdata, aes(x, y)) +
+            ggplot(plotdata(), aes(x, y)) +
                 geom_point(color = '#F78E24') +
+                geom_point(data = plotdata() %>% filter(Major == "My Major"), size = 3, color = "red4") +
                 geom_text_repel(aes(label = Major)) +
                 theme_minimal(base_size = 16) +
-                theme(axis.text = element_text(color = "#cccccc"),
-                      axis.title = element_blank()) +
-                labs(title = "MDS Plot of the Questions to Majors dataset")
-        }
+                theme(axis.text = element_text(color = "#aaaaaa"))
+            }
     })
 }
 
