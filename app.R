@@ -28,6 +28,15 @@ ui <- fluidPage(
         )
 )
 
+qs_data <- read_csv("data/major_qs_data.csv") %>%
+    rename(Major = 1) # rename the first column
+dev_data <- qs_data %>%
+    mutate_if(is.numeric, function(x) {
+        abs(x - mean(x, na.rm = TRUE))
+    })
+trait_data <- read_csv("data/input_data/questions.csv") %>%
+    filter(!is.na(Question)) %>%
+    gather(key = Construct, value, 2:ncol(.), na.rm = TRUE)
 
 # Define server logic required 
 server <- function(input, output, session) {
@@ -42,16 +51,10 @@ server <- function(input, output, session) {
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
-        data$qs <- read_csv("data/major_qs_data.csv") %>%
-            rename(Major = 1) # rename the first column
+        data$qs <- qs_data
         # find deviations from mean of observations for each question
-        data$qs_dev <- data$qs %>%
-            mutate_if(is.numeric, function(x) {
-                abs(x - mean(x, na.rm = TRUE))
-            })
-        data$trait <- read_csv("data/input_data/questions.csv") %>%
-            filter(!is.na(Question)) %>%
-            gather(key = Construct, value, 2:ncol(.), na.rm = TRUE) %>%
+        data$qs_dev <- dev_data
+        data$trait <- trait_data %>%
             # replace 1 with trait name and -1 with not
             mutate(Trait = ifelse(value == 1, Construct, paste0("Not ", Construct)))
         # Initialize/Set all vars to default
