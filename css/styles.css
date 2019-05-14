@@ -1,0 +1,33 @@
+@import url('//fonts.googleapis.com/css?family=Raleway|Montserrat');
+
+h4 {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 500;
+  color: #6a6a6a;
+}
+
+h3 {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 500;
+  color: #6a6a6a;
+}
+
+h2 {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 500;
+  color: #6a6a6a;
+}
+
+a {
+  color: #FF8E30;
+}
+
+a:hover {
+    color: #FF8E30;
+}
+
+body {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 500;
+  color: #6a6a6a;
+}

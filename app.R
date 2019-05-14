@@ -1,7 +1,13 @@
 library(tidyverse)
-library(shiny)
 library(ggrepel)
+library(shiny)
 library(shinycssloaders)
+library(shinythemes)
+library(shinyjs)
+
+## Set images resource path
+addResourcePath("images", "images")
+
 
 qs_data <- read_csv("data/major_qs_data.csv") %>%
     rename(Major = 1) # rename the first column
@@ -22,15 +28,27 @@ qs_useralgo <- qs_data %>%
     rbind(c("My Major", colMeans(.[,-1]))) # in the beginning user answrs are set to average of all majors
 
 
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("cerulean"),
+                
+    useShinyjs(),
+                
+    includeCSS("css/styles.css"),
 
-    titlePanel("Smart Match"),
+    titlePanel("Major Me"),
     
     wellPanel(
-        #a(href = "https://oaiti.org", target = "_blank", img(src = "images/oaiti_transparent.png", width = "135")),
-        HTML("Welcome to the smart major matching application. The algorithm suggests a list of college majors after every question, converging when there is a consistent major found in the list or all the questions are exhausted."),
-        HTML("Follow along the diagnostics see the quick match results!"),
+        fluidRow(
+            column(width = 10,
+                   h4("About"),
+                   HTML("Welcome to the major me matching application. The algorithm suggests a list of college majors after every question, converging when there is a consistent major found in the list or all the questions are exhausted."),
+                   HTML("Follow along the diagnostics see the quick match results!")
+            ),
+            column(width = 2,
+                   div(style = "text-align: right", a(href = "https://oaiti.org", target = "_blank", img(src = "images/oaiti_transparent.png", width = "135")))
+            )
+        ),
         hr(),
+        div(style = "width: 15%", selectInput("mode", "Survey Mode", choices = c("Reduced", "Complete"))),
         actionButton("goButton", "Take the Quiz", icon = icon("play-circle"))
     ),
 
@@ -51,7 +69,8 @@ ui <- fluidPage(
 server <- function(input, output, session) {
     
     ## Reactive Values to hold User Data
-    user <- reactiveValues(if_finish_quiz = NULL, user_response = NULL, pred_label = NULL)
+    user <- reactiveValues(if_finish_quiz = NULL, user_response = NULL, pred_label = NULL,
+                           pred_others = NULL)
     
     ## Reactive Values for Input
     data <- reactiveValues(qs = NULL, qs_dev = NULL)
@@ -62,6 +81,11 @@ server <- function(input, output, session) {
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
+        
+        # Disable take quiz button
+        shinyjs::disable("goButton")
+        shinyjs::hide("mode")
+        
         # Copy the data as a reactive
         data$qs <- qs_data
         
@@ -108,8 +132,13 @@ server <- function(input, output, session) {
                 actionButton("ansButton", label = "Submit")
             )
         } else if (user$if_finish_quiz) {
+            shinyjs::enable("goButton")
+            shinyjs::show("mode")
+            
             list(
-                HTML(paste0("<h3>", "Your Major is <b>", user$pred_label, "</b></h3>"))
+                HTML(paste0("<h3>", "Your Major is <b>", user$pred_label, "</b></h3>")),
+                hr(),
+                HTML(paste0("<h4>", "Other Possibilities are <b>", paste(user$pred_others, collapse = " and "), "</b></h3>"))
             )
         }
     })
@@ -140,42 +169,47 @@ server <- function(input, output, session) {
             select(-cq)
         data$qs_dev <- data$qs_dev %>%
             select(-cq)
-
-        # terminate if done with questions
-        if (ncol(data$qs_dev) == 1) { # just has major column
-            mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]
-            user$pred_label <- mymajor
-            user$if_finish_quiz <- TRUE
-        }
         
         # Convergence criteria
+        term_criteria <- FALSE
         if(track$iter >= 5) {
             check <- track$rank1 %>%
                 count(Major, sort = TRUE) %>%
                 slice(1) 
-            if (check$n > 4) {
-                user$pred_label <- check$Major
+            
+            # Either 5 consecutive min dist, or there's no more questions
+            term_criteria <- ncol(data$qs_dev) == 1
+            if (input$mode == "Reduced") term_criteria <- term_criteria || check$n > 4
+            
+            if (term_criteria) {
+                #mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]
+                mymajors <- track$dist_calc$Major[order(track$dist_calc$Distance)][1:3]
+                user$pred_label <- mymajors[1]
+                user$pred_others <- mymajors[2:3]
                 user$if_finish_quiz <- TRUE
             } 
         }
-        # 2. max deviation questions  - What if there are ties in this step, choosing first
-        max_dist_qs <- data$qs_dev %>%
-            filter(Major %in% min_dist_majors$Major) %>%
-            select(-Major) %>%
-            select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
-            filter_all(any_vars(. == !!max(.))) %>%
-            select(max.col(.))
         
-        # add cur qs to selected
-        track$selected_qs <- c(track$selected_qs, track$cur_qs)
-        
-        # choose 1 in case there are many, this becomes cur_qs
-        track$cur_qs <- max_dist_qs %>%
-            select(1) %>%
-            colnames()
-        
-        # Increase the iteration
-        track$iter <- track$iter + 1
+        if (!term_criteria) {
+            # 2. max deviation questions  - What if there are ties in this step, choosing first
+            max_dist_qs <- data$qs_dev %>%
+                filter(Major %in% min_dist_majors$Major) %>%
+                select(-Major) %>%
+                select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
+                filter_all(any_vars(. == !!max(.))) %>%
+                select(max.col(.))
+            
+            # add cur qs to selected
+            track$selected_qs <- c(track$selected_qs, track$cur_qs)
+            
+            # choose 1 in case there are many, this becomes cur_qs
+            track$cur_qs <- max_dist_qs %>%
+                select(1) %>%
+                colnames()
+            
+            # Increase the iteration
+            track$iter <- track$iter + 1
+        }
     })
     
     qs_trait <- reactive({
@@ -189,10 +223,23 @@ server <- function(input, output, session) {
         if (is.null(user$if_finish_quiz)) return(NULL)
         
         list(
+            h4("Questions Answered: ", length(track$selected_qs)),
             h4("Trait Measured by current Question: ", qs_trait()),
             hr(),
             h4("Map of Possible Majors (based on previous answer)"),
-            withSpinner(plotOutput("mdsplot"))
+            withSpinner(plotOutput("mdsplot")),
+            hr(),
+            h4(paste0("Top 5 Majors After Question ", track$iter)),
+            withSpinner(tableOutput("top5"))
+        )
+    })
+    
+    output$top5 <- renderTable({
+        if (track$iter == 0) return(NULL)
+            
+        tibble(
+            Rank = paste0("#", 1:5),
+            Major = track$dist_calc$Major[order(track$dist_calc$Distance)][1:5]
         )
     })
     
