@@ -48,8 +48,24 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
             )
         ),
         hr(),
-        div(style = "width: 15%", selectInput("mode", "Survey Mode", choices = c("Reduced", "Complete"))),
-        actionButton("goButton", "Take the Quiz", icon = icon("play-circle"))
+        fluidRow(
+            column(width = 2,
+                   actionButton("goButton", "Take the Quiz", icon = icon("play-circle"))
+            ),
+            column(width = 2,
+                   checkboxInput("advanced", "Show Advanced Options")
+            ),
+            column(width = 3,
+                   conditionalPanel(condition = "input.advanced",
+                                    selectInput("mode", "Survey Mode", choices = c("Reduced", "Complete"))
+                   )
+            ),
+            column(width = 3,
+                   conditionalPanel(condition = "input.advanced",
+                                    selectInput("start", "Survey Start", choices = c("Trait Optimized", "Optimized", "Random"))
+                   )
+            )
+        )
     ),
 
     fluidRow(
@@ -85,6 +101,7 @@ server <- function(input, output, session) {
         # Disable take quiz button
         shinyjs::disable("goButton")
         shinyjs::hide("mode")
+        shinyjs::hide("start")
         
         # Copy the data as a reactive
         data$qs <- qs_data
@@ -97,14 +114,28 @@ server <- function(input, output, session) {
         user$if_finish_quiz <- FALSE
         user$user_response <- numeric()
         
-        # first question is the one with max deviation (most distinguishable)
-        track$cur_qs <- data$qs_dev %>%
-            select(-Major) %>%
-            select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
-            filter_all(any_vars(. == !!max(.))) %>%
-            select(max.col(.)) %>%
-            select(1) %>%
-            colnames()
+        if (input$start == "Trait Optimized") {
+            # first question is the one in a trait with the most deviation
+            track$cur_qs <- data$qs_dev %>%
+                gather(key = Question, value = Value, 2:ncol(.)) %>%
+                left_join(trait_data) %>%
+                group_by(Trait) %>%
+                summarise(Deviation = max(Value),
+                          Question = Question[which.max(Value)]) %>%
+                sample_n(1) %>%
+                .$Question
+        } else if (input$start == "Optimized") {
+            # first question is the one with max deviation (most distinguishable)
+            track$cur_qs <- data$qs_dev %>%
+                select(-Major) %>%
+                select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
+                filter_all(any_vars(. == !!max(.))) %>%
+                select(max.col(.)) %>%
+                select(1) %>%
+                colnames()
+        } else if (input$start == "Random") {
+            track$cur_qs <- sample(names(data$qs_dev)[-1], size = 1)
+        }
         
         track$dist_calc <- data$qs %>% select(Major) %>% mutate(Distance = 0)
         track$rank1 <- tibble()
@@ -134,6 +165,7 @@ server <- function(input, output, session) {
         } else if (user$if_finish_quiz) {
             shinyjs::enable("goButton")
             shinyjs::show("mode")
+            shinyjs::show("start")
             
             list(
                 HTML(paste0("<h3>", "Your Major is <b>", user$pred_label, "</b></h3>")),
