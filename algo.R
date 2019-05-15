@@ -1,3 +1,6 @@
+# Simulated flag
+simulated <- TRUE
+
 # load libraries
 library(tidyverse)
 
@@ -28,15 +31,25 @@ cur_qs <- qs_dev %>%
 dist_calc <- qs_algo %>% select(Major) %>% mutate(Distance = 0)
 rank1 <- tibble()
 
+all_answers <- NULL
+all_questions <- NULL
+
 # Serve Question and get response
 for(i in 1:(ncol(qs_algo) - 1)) {
     
     # print current question
-    print(cur_qs)
+    if (!simulated) print(cur_qs)
     
     # provide the score
-    user <- as.numeric(readline(prompt = "Enter answer: ") )
+    if (simulated) {
+        user <- sample(-2:2, size = 1)
+    } else {
+        user <- as.numeric(readline(prompt = "Enter answer: ") )
+    }
     
+    all_answers <- c(all_answers, user)
+    all_questions <- c(all_questions, cur_qs)
+
     # Iteration 1
     # 1. Find min distance observation for Q1
     # 2. For that observation, find the max deviated question and ask it next
@@ -65,8 +78,11 @@ for(i in 1:(ncol(qs_algo) - 1)) {
     if (ncol(qs_dev) == 1) { # just has major column
         mymajor <- dist_calc$Major[which.min(dist_calc$Distance)]
 
-        print(paste0("Your major is: ", mymajor))
-        return(mymajor)
+        if (!simulated) print(paste0("Your major is: ", mymajor))
+        
+        final <- list(Major = mymajor, Vector = all_answers, Questions = all_questions)
+        
+        break;
     }
     
     # Convergence criteria
@@ -79,8 +95,11 @@ for(i in 1:(ncol(qs_algo) - 1)) {
             count(Major, sort = TRUE) %>%
             slice(1) 
         if (check$n > 4) {
-            print(paste0("Your major is: ", check$Major))
-            return(check$Major)
+            if (!simulated) print(paste0("Your major is: ", check$Major))
+            
+            final <- list(Major = check$Major, Vector = all_answers, Questions = all_questions)
+            
+            break;
         } 
     }
     
