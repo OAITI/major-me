@@ -1,7 +1,7 @@
 get_next_question <- function(deviation_data, trait_data = NULL, start = "Trait Optimized", major_list = unique(deviation_data$Major)) {
     
     if (start == "Trait Optimized") {
-        # first question is the one in a trait with the most deviation
+        # first question is the one in a random trait with the most deviation
         cur_qs <- deviation_data %>%
             gather(key = Question, value = Value, 2:ncol(.)) %>%
             left_join(trait_data) %>%

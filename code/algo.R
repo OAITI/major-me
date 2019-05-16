@@ -16,6 +16,14 @@ qs <- read_csv("../data/major_qs_data.csv")
 qs_algo <- qs %>%
     rename(Major = 1)
 
+# add new vectors 
+new_vectors <- read_csv("../data/input_data/new_vecs.csv") %>%
+    rename(Major = 1)
+qs_updated <- colnames(new_vectors)[-1]
+qs_algo <- qs_algo %>%
+    select(-qs_updated) %>%
+    left_join(new_vectors, by = "Major")
+
 # find deviations from mean of observations for each question
 qs_dev <- qs_algo %>%
     mutate_if(is.numeric, function(x) {
