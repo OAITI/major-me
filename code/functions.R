@@ -5,7 +5,7 @@ get_next_question <- function(deviation_data, trait_data = NULL, start = "Trait 
         cur_qs <- deviation_data %>%
             gather(key = Question, value = Value, 2:ncol(.)) %>%
             left_join(trait_data) %>%
-            group_by(Trait) %>%
+            group_by(Construct) %>%
             summarise(Deviation = max(Value),
                       Question = Question[which.max(Value)]) %>%
             sample_n(1) %>%

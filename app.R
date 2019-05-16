@@ -4,13 +4,13 @@ library(shiny)
 library(shinycssloaders)
 library(shinythemes)
 library(shinyjs)
+library(bsplus)
 
 ## Utility functions
 source("code/functions.R")
 
 ## Set images resource path
 addResourcePath("images", "images")
-
 
 qs_data <- read_csv("data/major_qs_data.csv") %>%
     rename(Major = 1) # rename the first column
@@ -34,6 +34,7 @@ qs_useralgo <- qs_data %>%
 ui <- fluidPage(theme = shinytheme("cerulean"),
                 
     useShinyjs(),
+    use_bs_popover(),
                 
     includeCSS("css/styles.css"),
 
@@ -41,47 +42,85 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
     
     wellPanel(
         fluidRow(
-            column(width = 10,
-                   h4("About"),
-                   HTML("Welcome to the major me matching application. The algorithm suggests a list of college majors after every question, converging when there is a consistent major found in the list or all the questions are exhausted."),
-                   HTML("Follow along the diagnostics see the quick match results!")
-            ),
-            column(width = 2,
-                   div(style = "text-align: right", a(href = "https://oaiti.org", target = "_blank", img(src = "images/oaiti_transparent.png", width = "135")))
-            )
-        ),
-        hr(),
-        fluidRow(
-            column(width = 2,
-                   actionButton("goButton", "Take the Quiz", icon = icon("play-circle"))
-            ),
-            column(width = 2,
-                   checkboxInput("advanced", "Show Advanced Options")
-            ),
-            column(width = 3,
-                   conditionalPanel(condition = "input.advanced",
-                                    selectInput("mode", "Survey Mode", choices = c("Reduced", "Complete"))
-                   )
-            ),
-            column(width = 3,
-                   conditionalPanel(condition = "input.advanced",
-                                    selectInput("start", "Survey Start", choices = c("Trait Optimized", "Optimized", "Random"))
-                   )
+            tabsetPanel(id = "tabs1",
+                tabPanel("Quiz",
+                         column(width = 10,
+                                h4("About"),
+                                HTML("Welcome to the major me matching application. The algorithm suggests a list of college majors after every question, converging when there is a consistent major found in the list or all the questions are exhausted."),
+                                HTML("Follow along the diagnostics see the quick match results!")
+                         ),
+                         column(width = 2,
+                                div(style = "text-align: right", a(href = "https://oaiti.org", target = "_blank", img(src = "images/oaiti_transparent.png", width = "135")))
+                         ),
+                         
+                         hr(),
+                         fluidRow(
+                             column(width = 2,
+                                    div(style = "padding-left: 15px", actionButton("goButton", "Take the Quiz", icon = icon("play-circle")))
+                             ),
+                             column(width = 3,
+                                    checkboxInput("advanced", "Show Advanced Options")
+                             ),
+                             column(width = 3,
+                                    conditionalPanel(condition = "input.advanced",
+                                                     selectInput("mode", "Survey Mode", choices = c("Reduced", "Complete")) %>%
+                                                         shinyInput_label_embed(
+                                                             shiny_iconlink() %>%
+                                                                 bs_embed_popover(
+                                                                     title = "Survey Mode", content = "Reduced (default) will intelligently select questions and terminate when a major is identified. Complete will ask all 61 questions in our database.", placement = "left"
+                                                                 )
+                                                         )
+                                    )
+                             ),
+                             column(width = 3,
+                                    conditionalPanel(condition = "input.advanced",
+                                                     selectInput("start", "Survey Start", choices = c("Trait Optimized", "Optimized", "Random")) %>%
+                                                         shinyInput_label_embed(
+                                                             shiny_iconlink() %>%
+                                                                 bs_embed_popover(
+                                                                     title = "Survey Mode", content = "Trait Optimized (default) will randomly choose a question that most has the most deviation between majors within a particular trait or construct. Optimized will ignore traits and constructs and choose the highest deviation question overall. Random will randomly select the first question from the full list.", placement = "left"
+                                                                 )
+                                                         )
+                                    )
+                             )
+                         )
+                ),
+                tabPanel("Information",
+                         column(width = 10,
+                                h4("Purpose"),
+                                HTML("Though surveys and quizzes can do a great job at matching individuals to a particular skill, major, or career, one issue with them is the length. A good survey has a large variety of questions, but users may get bored or disinterested before completion of a large survey.<br><br>
+                                      
+                                      This application implemented a <b>reduced questionnaire</b> algorithm to intelligently select questions, and speed the process of matching to a major. While the Complete survey is over 60 questions, a typical reduced version will be 5-10 questions before termination."),
+                                h4("Directions"),
+                                HTML("<ol><li>Read the information and disclaimers on the quiz</li>
+                                          <li>On the Quiz tab, click 'Take the Quiz'</li>
+                                          <li>Answer the question and click 'Submit'</li>
+                                          <li>Diagnostics will appear in the right-hand panel. Answer the next question to continue</li>
+                                          <li>When the algorithm terminates, you will have the option to submit your real major to help us improve the results</li></ol>"),
+                                h4("Disclaimer"),
+                                HTML("This quiz and algorithm is provided 'as-is' and we make no guarantees about the accuracy or performance. By submitting your real major, you consent to have your anonymized data used for purposes of improving this algorithm.")
+                         ),
+                         column(width = 2,
+                                div(style = "text-align: right", a(href = "https://oaiti.org", target = "_blank", img(src = "images/oaiti_transparent.png", width = "135")))
+                         )
+                )
             )
         )
     ),
 
-    fluidRow(
-        column(7,
-               h3("Quiz"),
-               div(style ="border-right:1px solid grey;height:700px;", 
-                   uiOutput("quiz_ui"))
-                ),
-        column(5,
-               h3("Diagnostics"), 
-               uiOutput("stat_ui")
-               )
-        )
+    conditionalPanel(condition = "input.tabs1 == 'Quiz'",
+                     fluidRow(
+                         column(7,
+                                h3("Quiz"),
+                                div(style ="border-right:1px solid grey;height:700px;", 
+                                    uiOutput("quiz_ui"))
+                         ),
+                         column(5,
+                                h3("Diagnostics"), 
+                                uiOutput("stat_ui")
+                         )
+                     )
+    )
 )
 
 # Define server logic required 
@@ -89,23 +128,24 @@ server <- function(input, output, session) {
     
     ## Reactive Values to hold User Data
     user <- reactiveValues(if_finish_quiz = NULL, user_response = NULL, pred_label = NULL,
-                           pred_others = NULL)
+                           pred_others = NULL, feedback_submitted = FALSE)
     
     ## Reactive Values for Input
     data <- reactiveValues(qs = NULL, qs_dev = NULL)
     
     ## Reactive Values to track for next steps/convergence
-    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, dist_calc = NULL,
+    track <- reactiveValues(cur_qs = NULL, selected_qs = NULL, selected_ans = NULL, dist_calc = NULL,
                             iter = numeric(), rank1 = NULL, user_algo = NULL, prev_qs = NULL)
     
     ## Read data and Initialize when Take Quiz is clicked
     observeEvent(input$goButton, {
         
         # Disable take quiz button
+        shinyjs::enable("submit_actual")
         shinyjs::disable("goButton")
         shinyjs::hide("mode")
         shinyjs::hide("start")
-        
+
         # Copy the data as a reactive
         data$qs <- qs_data
         # find deviations from mean of observations for each question
@@ -115,6 +155,7 @@ server <- function(input, output, session) {
         user$user <- tempfile(pattern = "User", tmpdir = "")
         user$if_finish_quiz <- FALSE
         user$user_response <- numeric()
+        user$feedback_submitted <- FALSE
 
         # Set all the track variables including starting question
         track$cur_qs <- get_next_question(data$qs_dev, trait_data, start = input$start)
@@ -122,6 +163,7 @@ server <- function(input, output, session) {
         track$rank1 <- tibble()
         track$iter <- 0
         track$selected_qs <- NULL
+        track$selected_ans <- NULL
         track$prev_qs <- NULL
         track$user_algo <- qs_useralgo
     })
@@ -151,14 +193,46 @@ server <- function(input, output, session) {
             list(
                 HTML(paste0("<h3>", "Your Major is <b>", user$pred_label, "</b></h3>")),
                 hr(),
-                HTML(paste0("<h4>", "Other Possibilities are <b>", paste(user$pred_others, collapse = " and "), "</b></h3>"))
+                HTML(paste0("<h4>", "Other Possibilities are <b>", paste(user$pred_others, collapse = " and "), "</b></h3>")),
+                hr(),
+                selectInput("actual", "Actual Major", choices = qs_data$Major, selected = NULL),
+                actionButton("submit_actual", "Submit Feedback"),
+                textOutput("feedback")
             )
         }
+    })
+    
+    output$feedback <- renderText({ 
+        if (!user$feedback_submitted) return(NULL)
+        
+        "Thanks for submitting feedback! If you'd like to take the quiz again, just click Take the Quiz above!" 
+    })
+    
+    observeEvent(input$submit_actual, {
+        shinyjs::disable("submit_actual")
+        
+        load("data/feedback.RData")
+
+        mytbl <- tibble(
+            Time = now(),
+            Predicted = user$pred_label,
+            Actual = input$actual,
+            Vector = list(track$selected_ans),
+            Questions = list(track$selected_qs)
+        )
+        
+        feedback <- feedback %>%
+            rbind(mytbl)
+        
+        save(feedback, file = "data/feedback.RData")
+        
+        user$feedback_submitted <- TRUE
     })
     
     # Submit answer - find minmajors, update tracking vars, data vars, user vars, and mdsplot 
     observeEvent(input$ansButton,{
         user$user_response <- as.numeric(input$ans_choice)
+        track$selected_ans <- c(track$selected_ans, user$user_response)
         
         # Store the previous questions
         track$prev_qs <- track$cur_qs
@@ -203,9 +277,10 @@ server <- function(input, output, session) {
             } 
         }
         
+        # add cur qs to selected
+        track$selected_qs <- c(track$selected_qs, track$cur_qs)
+        
         if (!term_criteria) {
-            # add cur qs to selected
-            track$selected_qs <- c(track$selected_qs, track$cur_qs)
             
             # 2. max deviation questions  - What if there are ties in this step, choosing first
             # choose 1 in case there are many, this becomes cur_qs

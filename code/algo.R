@@ -78,36 +78,7 @@ for(i in 1:(ncol(qs_algo) - 1)) {
     # remove completed qs
     qs_dev <- qs_dev %>%
         select(-cur_qs)
-    
-    # terminate if done with questions
-    if (ncol(qs_dev) == 1) { # just has major column
-        mymajor <- dist_calc$Major[which.min(dist_calc$Distance)]
 
-        if (!simulated) print(paste0("Your major is: ", mymajor))
-        
-        final <- list(Major = mymajor, Vector = all_answers, Questions = all_questions)
-        
-        break;
-    }
-    
-    # Convergence criteria
-    # The highest ranked school does not change after 5 iterations
-    # A school remains in the top ranked group after 5 iterations
-    # There is only one school in the rank 1 group
-    # All questions are answered
-    if(i >= 5) {
-        check <- rank1 %>%
-            count(Major, sort = TRUE) %>%
-            slice(1) 
-        if (check$n > 4) {
-            if (!simulated) print(paste0("Your major is: ", check$Major))
-            
-            final <- list(Major = check$Major, Vector = all_answers, Questions = all_questions)
-            
-            break;
-        } 
-    }
-    
     # Convergence criteria
     term_criteria <- FALSE
     if(i >= 5) {
