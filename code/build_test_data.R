@@ -3,15 +3,15 @@ library(readxl)
 
 # algonquin.csv has sample question-answers from different fields and we want to check 
 # whether the means match the means given by someone initialmeanvectors.xlsx. 
-algo <- read_csv("data/input_data/algonquin_orig.csv") # specific occupation to question
-qs <- read_csv("data/input_data/questions.csv") %>%
+algo <- read_csv("../data/input_data/algonquin_orig.csv") # specific occupation to question
+qs <- read_csv("../data/input_data/questions.csv") %>%
     filter(!is.na(Question)) # qs to Traits
-means <- read_excel("data/input_data/InitialMeanVectors.xlsx") %>%
+means <- read_excel("../data/input_data/InitialMeanVectors.xlsx") %>%
     filter(!is.na(`...1`)) %>% # Broad Major to Traits(mean vectors)
     mutate_if(is.numeric, function(x){
         x-3
     })
-mapping <- read_csv("data/input_data/major_mapping.csv") # specific occupation to broad major
+mapping <- read_csv("../data/input_data/major_mapping.csv") # specific occupation to broad major
 
 # answers to 1-5 level in tall format
 algo_tall <- algo %>%
@@ -79,6 +79,6 @@ question_mapping <- qs %>%
     ungroup() %>%
     spread(key = Question, value = Value)
 
-write_csv(question_mapping, "data/major_qs_data.csv")
+write_csv(question_mapping, "../data/major_qs_data.csv")
 
 
