@@ -5,6 +5,9 @@ library(shinycssloaders)
 library(shinythemes)
 library(shinyjs)
 
+## Utility functions
+source("code/functions.R")
+
 ## Set images resource path
 addResourcePath("images", "images")
 
@@ -105,7 +108,6 @@ server <- function(input, output, session) {
         
         # Copy the data as a reactive
         data$qs <- qs_data
-        
         # find deviations from mean of observations for each question
         data$qs_dev <- dev_data
         
@@ -113,30 +115,9 @@ server <- function(input, output, session) {
         user$user <- tempfile(pattern = "User", tmpdir = "")
         user$if_finish_quiz <- FALSE
         user$user_response <- numeric()
-        
-        if (input$start == "Trait Optimized") {
-            # first question is the one in a trait with the most deviation
-            track$cur_qs <- data$qs_dev %>%
-                gather(key = Question, value = Value, 2:ncol(.)) %>%
-                left_join(trait_data) %>%
-                group_by(Trait) %>%
-                summarise(Deviation = max(Value),
-                          Question = Question[which.max(Value)]) %>%
-                sample_n(1) %>%
-                .$Question
-        } else if (input$start == "Optimized") {
-            # first question is the one with max deviation (most distinguishable)
-            track$cur_qs <- data$qs_dev %>%
-                select(-Major) %>%
-                select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
-                filter_all(any_vars(. == !!max(.))) %>%
-                select(max.col(.)) %>%
-                select(1) %>%
-                colnames()
-        } else if (input$start == "Random") {
-            track$cur_qs <- sample(names(data$qs_dev)[-1], size = 1)
-        }
-        
+
+        # Set all the track variables including starting question
+        track$cur_qs <- get_next_question(data$qs_dev, trait_data, start = input$start)
         track$dist_calc <- data$qs %>% select(Major) %>% mutate(Distance = 0)
         track$rank1 <- tibble()
         track$iter <- 0
@@ -223,21 +204,12 @@ server <- function(input, output, session) {
         }
         
         if (!term_criteria) {
-            # 2. max deviation questions  - What if there are ties in this step, choosing first
-            max_dist_qs <- data$qs_dev %>%
-                filter(Major %in% min_dist_majors$Major) %>%
-                select(-Major) %>%
-                select(max.col(.)) %>% # selects columns with rowmax s(doing this to make subset so it's faster?)
-                filter_all(any_vars(. == !!max(.))) %>%
-                select(max.col(.))
-            
             # add cur qs to selected
             track$selected_qs <- c(track$selected_qs, track$cur_qs)
             
+            # 2. max deviation questions  - What if there are ties in this step, choosing first
             # choose 1 in case there are many, this becomes cur_qs
-            track$cur_qs <- max_dist_qs %>%
-                select(1) %>%
-                colnames()
+            track$cur_qs <- get_next_question(data$qs_dev, start = "Optimized", major_list = min_dist_majors$Major)
             
             # Increase the iteration
             track$iter <- track$iter + 1
