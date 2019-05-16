@@ -20,7 +20,7 @@ get_next_question <- function(deviation_data, trait_data = NULL, start = "Trait 
             select(max.col(.)) %>%
             select(1) %>%
             colnames()
-    } else if (input$start == "Random") {
+    } else if (start == "Random") {
         cur_qs <- sample(names(deviation_data)[-1], size = 1)
     }
     

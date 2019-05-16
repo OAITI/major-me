@@ -16,6 +16,14 @@ addResourcePath("images", "images")
 qs_data <- read_csv("data/major_qs_data.csv") %>%
     rename(Major = 1) # rename the first column
 
+# add new vectors 
+new_vectors <- read_csv("data/input_data/new_vecs.csv") %>%
+    rename(Major = 1)
+qs_updated <- colnames(new_vectors)[-1]
+qs_data <- qs_data %>%
+    select(-qs_updated) %>%
+    left_join(new_vectors, by = "Major")
+    
 dev_data <- qs_data %>%
     mutate_if(is.numeric, function(x) {
         abs(x - mean(x, na.rm = TRUE))
