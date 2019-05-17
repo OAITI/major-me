@@ -27,13 +27,13 @@ qs <- final_result %>%
     unnest(Questions) %>%
     count(Questions, sort = TRUE) %>%
     # top and bottom
-    slice(c(1:10, (nrow(.)-10):nrow(.)))
+    slice(c(1:5, (length(Questions) - 4):length(Questions)))
     
-ggplot(qs, aes(x = forcats::fct_reorder(Questions, n), y = n)) +
+ggplot(qs, aes(x = forcats::fct_reorder(Questions, n, .desc = TRUE), y = n)) +
     geom_bar(stat = "identity") + 
     coord_flip() +
-    facet_wrap(Start~.) +
-    labs(title = "Top and Bottom 10 Questions by Frequency",
+    facet_grid(Mode ~ Start, scales = "free") +
+    labs(title = "Top and Bottom 5 Questions by Frequency",
          x = "")
 
 # First question
@@ -44,12 +44,12 @@ qs <- final_result %>%
     group_by(Mode, Start) %>%
     count(FirstQuestion, sort = TRUE) %>%
     # top and bottom
-    slice(c(1:10, (nrow(.)-10):nrow(.)))
+    slice(c(1:5, (length(FirstQuestion) - 4):length(FirstQuestion)))
 
-ggplot(qs, aes(x = forcats::fct_reorder(FirstQuestion, n), y = n)) +
+ggplot(qs, aes(x = forcats::fct_reorder(FirstQuestion, n, .desc = TRUE), y = n)) +
     geom_bar(stat = "identity") + 
     coord_flip() +
-    facet_wrap(Start~.) +
+    facet_grid(Mode ~ Start, scales = "free") +
     labs(title = "Top First Questions",
          x = "")
 
@@ -70,3 +70,10 @@ qs_ans <- final_result %>%
     unnest() %>%
     group_by(Trial) %>%
     mutate(QNo = seq(1:length(Questions))) 
+
+## Number of questions
+final_result %>%
+    unnest() %>%
+    group_by(Mode, Start) %>%
+    summarise(AverageQuestions = mean(sapply(Questions, length)),
+              MaxQuestions = max(sapply(Questions, length)))

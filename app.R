@@ -253,8 +253,9 @@ server <- function(input, output, session) {
         # get majors with the smallest distance now
         min_dist_majors <- track$dist_calc %>%
             filter(Distance == min(Distance)) %>%
-            select(Major)
-        
+            select(Major) %>%
+            mutate(Iteration = track$iter)
+    
         # store them as rank 1 majors
         track$rank1 <- track$rank1 %>%
             bind_rows(min_dist_majors)
@@ -270,13 +271,13 @@ server <- function(input, output, session) {
         term_criteria <- FALSE
         if(track$iter >= 5) {
             check <- track$rank1 %>%
-                filter(track$iter %in% (i-4):i) %>%
+                filter(Iteration %in% (track$iter-4):track$iter) %>%
                 count(Major, sort = TRUE) %>%
                 filter(n == 5)
             
             # Either 5 consecutive min dist, or there's no more questions
             term_criteria <- ncol(data$qs_dev) == 1
-            if (input$mode == "Reduced") term_criteria <- term_criteria || check$n[1] > 4
+            if (input$mode == "Reduced") term_criteria <- term_criteria || nrow(check) == 1
             
             if (term_criteria) {
                 #mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]
