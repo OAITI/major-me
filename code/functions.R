@@ -16,7 +16,7 @@ get_next_question <- function(deviation_data, trait_data = NULL, start = "Trait 
             filter(Major %in% major_list) %>%
             gather(key = Question, value = Value, 2:ncol(.)) %>%
             group_by(Question) %>%
-            summarise(Deviation = if (length(Value) == 1) 0 else max(abs(diff(Value)))) %>%
+            summarise(Deviation = max(Value)) %>%
             filter(Deviation == max(Deviation)) %>%
             sample_n(1) %>%
             .[[1]]
