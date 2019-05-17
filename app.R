@@ -282,8 +282,8 @@ server <- function(input, output, session) {
             if (term_criteria) {
                 #mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]
                 mymajors <- track$dist_calc$Major[order(track$dist_calc$Distance)][1:3]
-                user$pred_label <- mymajors[1]
-                user$pred_others <- mymajors[2:3]
+                user$pred_label <- check$Major[1]
+                user$pred_others <- setdiff(mymajors, check$Major[1])
                 user$if_finish_quiz <- TRUE
             } 
         }
@@ -328,7 +328,7 @@ server <- function(input, output, session) {
         if (track$iter == 0) return(NULL)
             
         tibble(
-            Rank = paste0("#", 1:5),
+            Rank = paste0("#", rank(track$dist_calc$Distance[order(track$dist_calc$Distance)], ties.method = "min")[1:5]),
             Major = track$dist_calc$Major[order(track$dist_calc$Distance)][1:5],
             Distance = format(track$dist_calc$Distance[order(track$dist_calc$Distance)][1:5], digits = 0)
         )
