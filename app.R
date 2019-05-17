@@ -329,7 +329,8 @@ server <- function(input, output, session) {
             
         tibble(
             Rank = paste0("#", 1:5),
-            Major = track$dist_calc$Major[order(track$dist_calc$Distance)][1:5]
+            Major = track$dist_calc$Major[order(track$dist_calc$Distance)][1:5],
+            Distance = format(track$dist_calc$Distance[order(track$dist_calc$Distance)][1:5], digits = 0)
         )
     })
     
