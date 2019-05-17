@@ -76,6 +76,12 @@ for(i in 1:(ncol(qs_algo) - 1)) {
         select(Major) %>%
         mutate(Iteration = i)
     
+    # get majors responding identically to that question
+    prev_majors <- dist_calc %>%
+        mutate(Distance = abs(qs_algo[[cur_qs]] - user)) %>%
+        filter(Distance == min(Distance)) %>%
+        .$Major
+    
     # store as rank 1 major
     rank1 <- rank1 %>%
         bind_rows(min_dist_majors)
@@ -112,7 +118,7 @@ for(i in 1:(ncol(qs_algo) - 1)) {
     }
     
     if (!term_criteria) {
-        cur_qs <- get_next_question(qs_dev, start = "Optimized", major_list = min_dist_majors$Major)
+        cur_qs <- get_next_question(qs_dev, start = "Optimized", major_list = prev_majors)
     }
 }
 

@@ -255,12 +255,19 @@ server <- function(input, output, session) {
             filter(Distance == min(Distance)) %>%
             select(Major) %>%
             mutate(Iteration = track$iter)
+        
+        # get majors responding identically to that question
+        prev_majors <- track$dist_calc %>%
+            mutate(Distance = abs(data$qs[[track$cur_qs]] - user$user_response)) %>%
+            filter(Distance == min(Distance)) %>%
+            .$Major
     
         # store them as rank 1 majors
         track$rank1 <- track$rank1 %>%
             bind_rows(min_dist_majors)
         
         cq <- track$cur_qs
+        
         # remove completed qs
         data$qs <- data$qs %>%
             select(-cq)
@@ -295,7 +302,7 @@ server <- function(input, output, session) {
             
             # 2. max deviation questions  - What if there are ties in this step, choosing first
             # choose 1 in case there are many, this becomes cur_qs
-            track$cur_qs <- get_next_question(data$qs_dev, start = "Optimized", major_list = min_dist_majors$Major)
+            track$cur_qs <- get_next_question(data$qs_dev, start = "Optimized", major_list = prev_majors)
             
             # Increase the iteration
             track$iter <- track$iter + 1
