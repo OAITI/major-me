@@ -277,7 +277,7 @@ server <- function(input, output, session) {
             
             # Either 5 consecutive min dist, or there's no more questions
             term_criteria <- ncol(data$qs_dev) == 1
-            if (input$mode == "Reduced") term_criteria <- term_criteria || nrow(check) == 1
+            if (input$mode == "Reduced") term_criteria <- term_criteria || (nrow(check) == 1 && nrow(min_dist_majors) == 1)
             
             if (term_criteria) {
                 #mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]

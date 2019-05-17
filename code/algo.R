@@ -98,7 +98,7 @@ for(i in 1:(ncol(qs_algo) - 1)) {
         
         # Either 5 consecutive min dist, or there's no more questions
         term_criteria <- ncol(qs_dev) == 1
-        if (game_mode == "Reduced") term_criteria <- term_criteria || nrow(check) == 1
+        if (game_mode == "Reduced") term_criteria <- term_criteria || (nrow(check) == 1 && nrow(min_dist_majors) == 1)
         
         if (term_criteria) {
             mymajor <- dist_calc$Major[which.min(dist_calc$Distance)]
