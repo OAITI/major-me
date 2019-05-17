@@ -5,9 +5,9 @@ library(tidyverse)
 source("functions.R")
 
 # Parameters for the script
-simulated <- TRUE
-start <- "Trait Optimized"
-game_mode <- "Complete"
+if (!exists("simulated")) simulated <- FALSE
+if (!exists("random_start")) random_start <- "Trait Optimized"
+if (!exists("game_mode")) game_mode <- "Reduced"
 
 # read the data
 qs <- read_csv("../data/major_qs_data.csv")
@@ -39,7 +39,7 @@ trait_data <- read_csv("../data/input_data/questions.csv") %>%
 
 # Initialize
 # first question is the one with max deviation(most distinguishable)
-cur_qs <- get_next_question(qs_dev, trait_data, start = start)
+cur_qs <- get_next_question(qs_dev, trait_data, start = random_start)
 dist_calc <- qs_algo %>% select(Major) %>% mutate(Distance = 0)
 rank1 <- tibble()
 
@@ -73,7 +73,8 @@ for(i in 1:(ncol(qs_algo) - 1)) {
     # get majors with the smallest distance now
     min_dist_majors <- dist_calc %>%
         filter(Distance == min(Distance)) %>%
-        select(Major)
+        select(Major) %>%
+        mutate(Iteration = i)
     
     # store as rank 1 major
     rank1 <- rank1 %>%
@@ -91,17 +92,20 @@ for(i in 1:(ncol(qs_algo) - 1)) {
     term_criteria <- FALSE
     if(i >= 5) {
         check <- rank1 %>%
+            filter(Iteration %in% (i-4):i) %>%
             count(Major, sort = TRUE) %>%
-            slice(1) 
+            filter(n == 5)
         
         # Either 5 consecutive min dist, or there's no more questions
         term_criteria <- ncol(qs_dev) == 1
-        if (game_mode == "Reduced") term_criteria <- term_criteria || check$n > 4
+        if (game_mode == "Reduced") term_criteria <- term_criteria || nrow(check) == 1
         
         if (term_criteria) {
-            if (!simulated) print(paste0("Your major is: ", check$Major))
+            mymajor <- dist_calc$Major[which.min(dist_calc$Distance)]
+
+            if (!simulated) print(paste0("Your major is: ", mymajor))
             
-            final <- list(Major = check$Major, Vector = all_answers, Questions = all_questions)
+            final <- list(Major = mymajor, Vector = all_answers, Questions = all_questions)
             
             break;
         } 

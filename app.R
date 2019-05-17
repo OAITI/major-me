@@ -270,12 +270,13 @@ server <- function(input, output, session) {
         term_criteria <- FALSE
         if(track$iter >= 5) {
             check <- track$rank1 %>%
+                filter(track$iter %in% (i-4):i) %>%
                 count(Major, sort = TRUE) %>%
-                slice(1) 
+                filter(n == 5)
             
             # Either 5 consecutive min dist, or there's no more questions
             term_criteria <- ncol(data$qs_dev) == 1
-            if (input$mode == "Reduced") term_criteria <- term_criteria || check$n > 4
+            if (input$mode == "Reduced") term_criteria <- term_criteria || check$n[1] > 4
             
             if (term_criteria) {
                 #mymajor <- track$dist_calc$Major[which.min(track$dist_calc$Distance)]
