@@ -15,14 +15,6 @@ addResourcePath("images", "images")
 
 qs_data <- read_csv("data/major_qs_data.csv") %>%
     rename(Major = 1) # rename the first column
-
-# add new vectors 
-new_vectors <- read_csv("data/input_data/new_vecs.csv") %>%
-    rename(Major = 1)
-qs_updated <- colnames(new_vectors)[-1]
-qs_data <- qs_data %>%
-    select(-qs_updated) %>%
-    left_join(new_vectors, by = "Major")
     
 dev_data <- qs_data %>%
     mutate_if(is.numeric, function(x) {
@@ -38,7 +30,6 @@ trait_data <- read_csv("data/input_data/questions.csv") %>%
 # for mds plot
 qs_useralgo <- qs_data %>%
     rbind(c("My Major", colMeans(.[,-1]))) # in the beginning user answrs are set to average of all majors
-
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
                 
