@@ -6,11 +6,7 @@ library(readxl)
 algo <- read_csv("../data/input_data/algonquin_orig.csv") # specific occupation to question
 qs <- read_csv("../data/input_data/questions.csv") %>%
     filter(!is.na(Question)) # qs to Traits
-means <- read_excel("../data/input_data/InitialMeanVectors.xlsx") %>%
-    filter(!is.na(`...1`)) %>% # Broad Major to Traits(mean vectors)
-    mutate_if(is.numeric, function(x){
-        x-3
-    })
+means <- read_excel("../data/input_data/UpdatedMeanVectors.xlsx", sheet = 3)
 mapping <- read_csv("../data/input_data/major_mapping.csv") # specific occupation to broad major
 
 # answers to 1-5 level in tall format
@@ -69,7 +65,6 @@ question_mapping <- qs %>%
     gather(key = Trait, value = Value, 2:ncol(.)) %>%
     left_join(
         means %>%
-            rename(Major = `...1`) %>%
             gather(key = Trait, value = MeanValue, 2:ncol(.)), by = "Trait"
     ) %>%
     mutate(Value = Value * MeanValue) %>% # get one value for Major for each question
@@ -80,5 +75,3 @@ question_mapping <- qs %>%
     spread(key = Question, value = Value)
 
 write_csv(question_mapping, "../data/major_qs_data.csv")
-
-
