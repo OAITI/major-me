@@ -261,9 +261,9 @@ server <- function(input, output, session) {
         
         # remove completed qs
         data$qs <- data$qs %>%
-            select(-cq)
+            select(-all_of(cq))
         data$qs_dev <- data$qs_dev %>%
-            select(-cq)
+            select(-all_of(cq))
         
         # Convergence criteria
         term_criteria <- FALSE
@@ -338,7 +338,10 @@ server <- function(input, output, session) {
         d <- dist(track$user_algo[,-1])
         if(!is.null(track$selected_qs)){
             # if the user has answered qs, update the answer
-            track$user_algo[track$user_algo$Major == "My Major", track$prev_qs] <- user$user_response
+            track$user_algo <- track$user_algo %>%
+                mutate_at(track$prev_qs, function(x) {
+                    c(head(x, -1), user$user_response)
+                })
             # take distance between selected qs vectors and mymajor for mds
             d <- dist(track$user_algo[,track$selected_qs, drop = FALSE])
         }
